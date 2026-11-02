@@ -54,7 +54,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                     newUser.setUid(uid);
                     newUser.setProvider(provider);
                     newUser.setUsername(name);
-                    newUser.setMajor(UserMajor.컴퓨터공학과);
+                    newUser.setMajor(UserMajor.컴퓨터공학과); // 매칭 로직 수정 과정에서 임시 기본값 설정
                     newUser.setGender(UserGender.FEMALE);
                     newUser.setRole(UserRole.USER);
                     return userRepository.save(newUser);

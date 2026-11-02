@@ -7,8 +7,7 @@ public enum OrderStatus {
     COOKING,        // 음식 조리 중
     READY,          // 픽업 대기 중
     COMPLETED,      // 픽업 완료
-    CANCELLED,      // 주문 취소
-    PAYMENT_FAILED; // 결제 실패
+    CANCELLED;      // 주문 취소
 
     public boolean canTransitionTo(OrderStatus next) {
         return switch (this) {

@@ -68,7 +68,7 @@ public class StoreController {
         return ResponseEntity.ok("상점이 폐업 처리되었습니다. (isAvailable=false)");
     }
 
-    /** 운영 중인 상점 단일 조회 GET /stores/{storeId} */
+    /** 폐업하지 않은 상점 단일 조회 GET /stores/{storeId} */
     @GetMapping("/{storeId}")
     public ResponseEntity<StoreResponseDto> getStore(@PathVariable Long storeId) {
         Store store = storeService.getStore(storeId);
@@ -98,7 +98,7 @@ public class StoreController {
         );
     }
 
-    /** 운영 중인 모든 상점 조회 GET /stores */
+    /** 폐업하지 않은 모든 상점 조회 GET /stores */
     @GetMapping
     public ResponseEntity<List<StoreResponseDto>> getAllActiveStores() {
         List<StoreResponseDto> responseList = storeService.getAllActiveStores()

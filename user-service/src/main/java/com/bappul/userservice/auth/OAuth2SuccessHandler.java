@@ -55,7 +55,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 + "?accessToken=" + encodedAccess
                 + "&refreshToken=" + encodedRefresh;
 
-        log.info(">>> OAuth2 로그인 성공: " + targetUrl);
+        log.info(">>> OAuth2 로그인 성공, redirect 처리 (uid={})", user.getUid());
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 }

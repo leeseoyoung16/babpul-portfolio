@@ -87,7 +87,7 @@ public class OrderService {
                 throw new IllegalArgumentException("예약은 최소 1시간 이후부터 가능합니다.");
             }
             if (reservedAt.isAfter(LocalDateTime.now().plusDays(1))) {
-                throw new IllegalArgumentException("예약은 최대 1일 이후까지만 가능합니다.");
+                throw new IllegalArgumentException("예약은 최대 다음날 까지만 가능합니다.");
             }
             order.setReservedAt(reservedAt);
             order.setPickupAt(reservedAt);

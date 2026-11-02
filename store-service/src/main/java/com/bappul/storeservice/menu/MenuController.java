@@ -24,7 +24,7 @@ public class MenuController {
             @AuthenticationPrincipal AuthenticatedUser authUser
     ) {
         Long storeId = storeRepository.findByOwnerId(authUser.getUserId())
-                .orElseThrow(() -> new RuntimeException("운영 중인 매장을 찾을 수 없습니다.")).getId();
+                .orElseThrow(() -> new RuntimeException("폐업하지 않은 매장을 찾을 수 없습니다.")).getId();
         Menu menu = menuService.createMenu(storeId, authUser.getUserId(),
                 dto.getName(), dto.getPrice(), dto.getPrepTime(), dto.getImage());
         return ResponseEntity.ok(new MenuResponseDto(menu));

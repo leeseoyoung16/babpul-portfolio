@@ -61,9 +61,4 @@ public class Cart {
         items.add(item);
         recalculateTotal();
     }
-
-    public void deleteItem(CartItem item) {
-        item.setCart(null);
-        items.remove(item);
-    }
 }

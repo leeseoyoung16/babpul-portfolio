@@ -19,7 +19,7 @@ public class MenuService {
     private final MenuRepository menuRepository;
     private final StoreRepository storeRepository;
 
-    @Value("${file.upload-dir:/app/uploads/}")
+    @Value("${file.upload-dir:./img/uploads/}")
     private String uploadDir;
 
     @Transactional
@@ -59,7 +59,7 @@ public class MenuService {
     }
 
     @Transactional
-    public void disableMenu(Long menuId, Long ownerId) {
+    public void disableMenu(Long menuId, Long ownerId) { // 단종 여부
         Menu menu = getMenu(menuId);
         verifyOwner(menu.getStoreId(), ownerId);
         menu.setAvailable(false);

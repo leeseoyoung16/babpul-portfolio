@@ -36,7 +36,7 @@ public class OrderItem {
     private Integer lineAmount;
 
     @Column(name = "real_name")
-    private String realName;
+    private String realName; // 랜덤 메뉴 -> 실제 이름 분류 위해
 
     @Column(name = "real_price")
     private Integer realPrice;

@@ -28,18 +28,9 @@ public class PaymentController {
             @RequestParam("pg_token") String pgToken) {
         log.info("[BRIDGE] 카카오 승인 콜백 수신. orderId={}", orderId);
         String appUrl = "myapp://payment/approve?pg_token=" + pgToken + "&partner_order_id=" + orderId;
-        String htmlContent = "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
-                + "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                + "<title>결제 완료</title></head>"
-                + "<body style='text-align:center; padding-top:50px; font-family: sans-serif;'>"
-                + "<h1>결제가 완료되었습니다!</h1>"
-                + "<p>잠시 후 앱으로 이동합니다.<br>이동하지 않으면 아래 버튼을 눌러주세요.</p>"
-                + "<a href='" + appUrl + "' style='display:inline-block; background-color:#FEE500; "
-                + "color:#000; padding:15px 30px; text-decoration:none; border-radius:10px; "
-                + "font-weight:bold; font-size:18px; margin-top:20px;'>앱으로 돌아가기</a>"
-                + "<script>setTimeout(function() { window.location.href = '" + appUrl + "'; }, 100);</script>"
-                + "</body></html>";
-        return ResponseEntity.ok().header(HttpHeaders.CONTENT_TYPE, "text/html; charset=UTF-8").body(htmlContent);
+        return ResponseEntity.ok().header(HttpHeaders.CONTENT_TYPE, "text/html; charset=UTF-8")
+                .body(makeReturnHtml("결제 완료", "결제가 완료되었습니다!",
+                        "잠시 후 앱으로 이동합니다.<br>이동하지 않으면 아래 버튼을 눌러주세요.", appUrl, "#FEE500"));
     }
 
     @PostMapping("/approve")
@@ -56,7 +47,8 @@ public class PaymentController {
         paymentService.cancelOrFail(orderId, false);
         String appUrl = "myapp://payment/cancel?partner_order_id=" + orderId;
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_TYPE, "text/html; charset=UTF-8")
-                .body(makeReturnHtml("결제가 취소되었습니다.", appUrl));
+                .body(makeReturnHtml("결제가 취소되었습니다.", "결제가 취소되었습니다.",
+                        "아래 버튼을 눌러 앱으로 돌아가세요.", appUrl, "#ddd"));
     }
 
     @GetMapping("/fail")
@@ -65,18 +57,20 @@ public class PaymentController {
         paymentService.cancelOrFail(orderId, true);
         String appUrl = "myapp://payment/fail?partner_order_id=" + orderId;
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_TYPE, "text/html; charset=UTF-8")
-                .body(makeReturnHtml("결제에 실패했습니다.", appUrl));
+                .body(makeReturnHtml("결제에 실패했습니다.", "결제에 실패했습니다.",
+                        "아래 버튼을 눌러 앱으로 돌아가세요.", appUrl, "#ddd"));
     }
 
-    private String makeReturnHtml(String title, String appUrl) {
+    private String makeReturnHtml(String title, String heading, String description, String appUrl, String buttonColor) {
         return "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
                 + "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                 + "<title>" + title + "</title></head>"
                 + "<body style='text-align:center; padding-top:50px; font-family: sans-serif;'>"
-                + "<h3>" + title + "</h3><p>아래 버튼을 눌러 앱으로 돌아가세요.</p>"
-                + "<a href='" + appUrl + "' style='display:inline-block; background-color:#ddd; "
-                + "color:#000; padding:10px 20px; text-decoration:none; border-radius:5px; "
-                + "font-weight:bold;'>앱으로 돌아가기</a>"
+                + "<h1>" + heading + "</h1>"
+                + "<p>" + description + "</p>"
+                + "<a href='" + appUrl + "' style='display:inline-block; background-color:" + buttonColor + "; "
+                + "color:#000; padding:15px 30px; text-decoration:none; border-radius:10px; "
+                + "font-weight:bold; font-size:18px; margin-top:20px;'>앱으로 돌아가기</a>"
                 + "<script>setTimeout(function() { window.location.href = '" + appUrl + "'; }, 100);</script>"
                 + "</body></html>";
     }

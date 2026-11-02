@@ -29,7 +29,7 @@ public class StoreNoticeController {
             @AuthenticationPrincipal AuthenticatedUser authUser
     ) {
         Store store = storeRepository.findByOwnerId(authUser.getUserId())
-                .orElseThrow(() -> new RuntimeException("운영 중인 가게가 없습니다."));
+                .orElseThrow(() -> new RuntimeException("폐업하지 않은 가게가 없습니다."));
 
         StoreNotice notice = noticeService.createNotice(
                 store.getId(),

@@ -28,7 +28,7 @@ public class StoreService {
     public Store createStore(String name, String address, String phone, Long ownerId, String ownerName) {
         storeRepository.findByOwnerId(ownerId).ifPresent(existingStore -> {
             if (existingStore.isAvailable()) {
-                throw new IllegalStateException("이미 운영 중인 상점이 존재합니다. 폐업 후 다시 등록해주세요.");
+                throw new IllegalStateException("이미 폐업하지 않은 상점이 존재합니다. 폐업 후 다시 등록해주세요.");
             }
         });
 
@@ -116,7 +116,7 @@ public class StoreService {
     public Store getActiveStoreByOwnerId(Long ownerId) {
         return storeRepository.findActiveStoreByOwnerIdFetch(ownerId)
                 .filter(Store::isAvailable)
-                .orElseThrow(() -> new EntityNotFoundException("운영 중인 상점이 없습니다."));
+                .orElseThrow(() -> new EntityNotFoundException("폐업하지 않은 상점이 없습니다."));
     }
 
     /** 영업 상태 수동 변경 */
@@ -152,7 +152,7 @@ public class StoreService {
         storeRepository.save(store);
     }
 
-    /** 운영 중 상점 전체 조회 */
+    /** 폐업하지 않은 상점 전체 조회 */
     @Transactional
     public List<Store> getAllActiveStores() {
         return storeRepository.findAllActiveStores();
