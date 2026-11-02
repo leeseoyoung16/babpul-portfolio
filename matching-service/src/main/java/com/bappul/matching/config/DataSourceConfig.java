@@ -22,7 +22,6 @@ import java.util.Map;
 @Configuration
 @EnableTransactionManagement
 @EnableJpaRepositories(basePackages = {
-        "com.bappul.matching.matching",
         "com.bappul.matching.lunchmatch",
         "com.bappul.matching.chat",
         "com.bappul.matching.point"
@@ -48,7 +47,6 @@ public class DataSourceConfig {
         LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(dataSource);
         em.setPackagesToScan(
-            "com.bappul.matching.matching",
             "com.bappul.matching.lunchmatch",
             "com.bappul.matching.chat",
             "com.bappul.matching.point"
