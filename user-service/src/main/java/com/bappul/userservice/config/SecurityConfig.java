@@ -21,6 +21,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final InternalApiKeyFilter internalApiKeyFilter;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
@@ -33,11 +34,11 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers("/internal/**").hasRole("INTERNAL")
                         .requestMatchers(
                                 "/", "/auth/**", "/oauth2/**", "/login/**",
                                 "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**",
-                                "/swagger-ui.html", "/health",
-                                "/internal/**"
+                                "/swagger-ui.html", "/health"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -48,6 +49,7 @@ public class SecurityConfig {
                 .logout(logout -> logout.disable());
 
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        http.addFilterAfter(internalApiKeyFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
 

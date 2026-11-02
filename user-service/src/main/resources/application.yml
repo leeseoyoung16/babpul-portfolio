@@ -58,6 +58,9 @@ eureka:
   instance:
     prefer-ip-address: true
 
+internal:
+  api-key: ${INTERNAL_API_KEY}
+
 jwt:
   secret-key: ${JWT_SECRET_KEY}
   expiration: 86400000  # 24시간 (원본과 동일)
