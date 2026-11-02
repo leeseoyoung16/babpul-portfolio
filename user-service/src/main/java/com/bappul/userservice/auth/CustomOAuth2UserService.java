@@ -49,10 +49,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         }
 
         User user = userRepository.findByUidAndProvider(uid, provider)
-                .map(existing -> {
-                    existing.setUsername(name);
-                    return userRepository.save(existing);
-                })
                 .orElseGet(() -> {
                     User newUser = new User();
                     newUser.setUid(uid);
