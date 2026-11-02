@@ -149,8 +149,10 @@ public class MatchService {
 
         a.setStatus(MatchQueueStatus.MATCHED);
         a.setProposalId(proposal.getId());
+
         b.setStatus(MatchQueueStatus.MATCHED);
         b.setProposalId(proposal.getId());
+
         matchQueueRepository.save(a);
         matchQueueRepository.save(b);
 
@@ -188,8 +190,6 @@ public class MatchService {
         boolean isReceiver  = userId.equals(proposal.getReceiverId());
         if (!isRequester && !isReceiver) return MatchProposalResult.notParticipant();
 
-        pointService.deductPoints(userId, 100, "매칭 응답");
-
         if (!accept) {
             proposal.setStatus(MatchProposalStatus.REJECTED);
             matchProposalRepository.save(proposal);
@@ -203,18 +203,10 @@ public class MatchService {
             MatchQueue victimQueue = matchQueueRepository.findById(String.valueOf(victimId)).orElse(null);
             if (victimQueue != null) {
                 sendFcm(victimId, "매칭 거절", "상대방이 매칭을 거절했어요. 다시 대기 중으로 전환합니다.");
-                UserInfoDto victimInfo = userServiceClient.getUserById(victimId);
-                if (victimInfo.getPoints() >= 100) {
-                    victimQueue.setStatus(MatchQueueStatus.WAITING);
-                    victimQueue.setProposalId(null);
-                    matchQueueRepository.save(victimQueue);
-                    findMatch(victimQueue);
-                } else {
-                    matchQueueRepository.deleteById(String.valueOf(victimId));
-                    matchSseService.notify(victimId, "queueRemoved",
-                            "{\"message\":\"포인트가 부족하여 대기열에서 제외되었습니다.\"}");
-                    agentHistoryService.pushModelMessage(victimId, "포인트가 부족하여 대기열에서 제외되었습니다.");
-                }
+                victimQueue.setStatus(MatchQueueStatus.WAITING);
+                victimQueue.setProposalId(null);
+                matchQueueRepository.save(victimQueue);
+                findMatch(victimQueue);
             }
 
             return MatchProposalResult.rejected();
@@ -224,6 +216,9 @@ public class MatchService {
         if (isReceiver)  proposal.setReceiverAccepted(true);
 
         if (proposal.isRequesterAccepted() && proposal.isReceiverAccepted()) {
+            pointService.deductPoints(proposal.getRequesterId(), 100, "매칭 성사");
+            pointService.deductPoints(proposal.getReceiverId(), 100, "매칭 성사");
+
             proposal.setStatus(MatchProposalStatus.ACCEPTED);
             matchProposalRepository.save(proposal);
             matchQueueRepository.deleteById(String.valueOf(proposal.getRequesterId()));
@@ -274,18 +269,10 @@ public class MatchService {
                 "{\"message\":\"매칭 제안이 만료되었습니다. 다시 대기열에 등록합니다.\"}");
         agentHistoryService.pushModelMessage(queue.getUserId(), "매칭 제안 시간이 초과되었습니다. 다시 대기 중으로 전환합니다.");
 
-        UserInfoDto userInfo = userServiceClient.getUserById(queue.getUserId());
-        if (userInfo.getPoints() >= 100) {
-            queue.setStatus(MatchQueueStatus.WAITING);
-            queue.setProposalId(null);
-            matchQueueRepository.save(queue);
-            findMatch(queue);
-        } else {
-            matchQueueRepository.deleteById(queue.getId());
-            matchSseService.notify(queue.getUserId(), "queueRemoved",
-                    "{\"message\":\"포인트가 부족하여 대기열에서 제외되었습니다.\"}");
-            agentHistoryService.pushModelMessage(queue.getUserId(), "포인트가 부족하여 대기열에서 제외되었습니다.");
-        }
+        queue.setStatus(MatchQueueStatus.WAITING);
+        queue.setProposalId(null);
+        matchQueueRepository.save(queue);
+        findMatch(queue);
     }
 
     public void cancelQueue(Long userId) {

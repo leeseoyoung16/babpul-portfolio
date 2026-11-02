@@ -30,6 +30,7 @@ public class MatchProposal {
 
     private MatchProposalStatus status;
 
+    @Builder.Default
     @TimeToLive(unit = TimeUnit.SECONDS)
     private long ttl = 300;
 }
