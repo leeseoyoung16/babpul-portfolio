@@ -37,10 +37,4 @@ public class ChatRoom {
 
     @Column(name = "unread_count2", nullable = false)
     private int unreadCount2 = 0;
-
-    @PrePersist
-    @PreUpdate
-    protected void onUpdate() {
-        this.lastMessageAt = LocalDateTime.now();
-    }
 }

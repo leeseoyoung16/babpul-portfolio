@@ -2,10 +2,12 @@ package com.bappul.matching.chat;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -65,6 +67,7 @@ public class ChatService {
         ChatMessage saved = saveMessage(chatRoomId, senderId, content, type);
 
         ChatRoom room = saved.getRoom();
+        room.setLastMessageAt(saved.getSentAt());
         if (room.getUser1Id().equals(senderId)) {
             room.setUnreadCount2(room.getUnreadCount2() + 1);
         } else {
@@ -97,7 +100,8 @@ public class ChatService {
         else room.setUnreadCount2(0);
         chatRoomRepository.save(room);
 
-        return chatMessageRepository.findByRoomOrderBySentAtAsc(room)
-                .stream().limit(limit).map(ChatMessageResponseDto::new).collect(Collectors.toList());
+        List<ChatMessage> messages = chatMessageRepository.findByRoomOrderByIdDesc(room, PageRequest.of(0, limit));
+        Collections.reverse(messages);
+        return messages.stream().map(ChatMessageResponseDto::new).collect(Collectors.toList());
     }
 }
