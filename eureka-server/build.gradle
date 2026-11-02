@@ -4,7 +4,7 @@ plugins {
     id 'java'
 }
 
-group = 'com.bappul'
+group = 'com.babpul'
 version = '0.0.1-SNAPSHOT'
 
 repositories {

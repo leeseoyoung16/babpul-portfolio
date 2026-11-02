@@ -1,7 +1,7 @@
 #!/bin/bash
 KEY="${DEPLOY_KEY:?DEPLOY_KEY 환경변수에 PEM 키 경로를 지정하세요}"
 HOST="${DEPLOY_HOST:?DEPLOY_HOST 환경변수에 user@host를 지정하세요}"
-REMOTE="/home/ec2-user/bappul-backend/bappul-msa"
+REMOTE="/home/ec2-user/babpul-portfolio"
 
 scp -i $KEY eureka-server/build/libs/*.jar $HOST:$REMOTE/eureka-server/build/libs/
 scp -i $KEY user-service/build/libs/*.jar $HOST:$REMOTE/user-service/build/libs/

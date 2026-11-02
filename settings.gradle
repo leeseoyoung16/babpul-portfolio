@@ -1,4 +1,4 @@
-rootProject.name = 'bappul-msa'
+rootProject.name = 'babpul-msa'
 
 include 'eureka-server'
 include 'matching-service'
