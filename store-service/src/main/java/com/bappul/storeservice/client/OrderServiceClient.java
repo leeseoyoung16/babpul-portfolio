@@ -4,7 +4,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
-@FeignClient(name = "order-service")
+@FeignClient(name = "order-service", fallback = OrderServiceFallback.class)
 public interface OrderServiceClient {
 
     @GetMapping("/internal/orders/store/{storeId}/has-active")

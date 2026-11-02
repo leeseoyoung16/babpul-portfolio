@@ -17,7 +17,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
 
-feign:
+spring.cloud.openfeign:
   circuitbreaker:
     enabled: true
 

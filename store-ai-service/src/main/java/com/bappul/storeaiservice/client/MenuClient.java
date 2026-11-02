@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-@FeignClient(name = "store-service", contextId = "menuClient")
+@FeignClient(name = "store-service", contextId = "menuClient", fallback = MenuClientFallback.class)
 public interface MenuClient {
 
     @GetMapping("/internal/menus/store/{storeId}")

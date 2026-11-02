@@ -6,12 +6,14 @@ import com.bappul.storeservice.store.schedule.StoreScheduleService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class StoreService {
@@ -42,11 +44,11 @@ public class StoreService {
         Store savedStore = storeRepository.save(newStore);
         storeScheduleService.initializeDefaultSchedule(savedStore.getId());
 
-        // user-service에 역할 변경 요청
+        // user-service에 역할 변경 요청 (실패해도 상점 생성 자체는 성공 처리, 로그만 남김)
         try {
             userServiceClient.updateUserRole(ownerId, "OWNER");
         } catch (Exception e) {
-            // user-service 역할 변경 실패 시 무시 (추후 보완 필요)
+            log.error("사장님 역할 변경 실패 - ownerId={}", ownerId, e);
         }
 
         return savedStore;

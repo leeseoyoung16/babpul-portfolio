@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
 
-@FeignClient(name = "store-service", contextId = "menuClient")
+@FeignClient(name = "store-service", contextId = "menuClient", fallback = MenuClientFallback.class)
 public interface MenuClient {
 
     @GetMapping("/internal/menus/store/{storeId}")

@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-@FeignClient(name = "store-service", contextId = "storeServiceClient")
+@FeignClient(name = "store-service", contextId = "storeServiceClient", fallback = StoreServiceClientFallback.class)
 public interface StoreServiceClient {
 
     // ── 공지 ──
