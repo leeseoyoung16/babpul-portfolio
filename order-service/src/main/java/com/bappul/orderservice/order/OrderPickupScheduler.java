@@ -5,6 +5,7 @@ import com.bappul.orderservice.payment.PaymentRepository;
 import com.bappul.orderservice.payment.PaymentService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +14,7 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class OrderPickupScheduler {
 
     private final OrderRepository orderRepository;
@@ -45,10 +47,15 @@ public class OrderPickupScheduler {
             if (payment == null) continue;
 
             if (payment.getApprovedAt() != null && payment.getApprovedAt().plusMinutes(5).isBefore(now)) {
-                paymentService.cancelOrFail(order.getId(), false);
-                order.setStatus(OrderStatus.CANCELLED);
-                orderRepository.save(order);
-                orderSocketPublisher.sendCancelled(order);
+                try {
+                    paymentService.cancelOrFail(order.getId(), false);
+                    order.setStatus(OrderStatus.CANCELLED);
+                    orderRepository.save(order);
+                    orderSocketPublisher.sendCancelled(order);
+                    orderSocketPublisher.sendCancelledToUser(order);
+                } catch (Exception e) {
+                    log.warn("[AUTO CANCEL] 주문 자동 취소 실패 - orderId={}, error={}", order.getId(), e.getMessage());
+                }
             }
         }
     }
@@ -63,7 +70,7 @@ public class OrderPickupScheduler {
             if (order.getOrderAt().plusMinutes(10).isBefore(now)) {
                 order.setStatus(OrderStatus.CANCELLED);
                 orderRepository.save(order);
-                orderSocketPublisher.sendCancelled(order);
+                orderSocketPublisher.sendCancelledToUser(order);
             }
         }
     }

@@ -30,4 +30,11 @@ public class OrderSocketPublisher {
                 new OrderMessageDto(order, OrderEventType.CANCELED)
         );
     }
+
+    public void sendCancelledToUser(Order order) {
+        messagingTemplate.convertAndSend(
+                "/sub/user/" + order.getUserId(),
+                new OrderMessageDto(order, OrderEventType.CANCELED)
+        );
+    }
 }
