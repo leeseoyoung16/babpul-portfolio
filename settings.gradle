@@ -1,0 +1,8 @@
+rootProject.name = 'bappul-msa'
+
+include 'eureka-server'
+include 'matching-service'
+include 'user-service'
+include 'order-service'
+include 'store-service'
+include 'store-ai-service'

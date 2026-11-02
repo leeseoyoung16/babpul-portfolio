@@ -1,0 +1,13 @@
+server:
+  port: 8761 #유레카 서버 포트 (표준)
+
+spring:
+  application:
+    name: eureka-server
+
+eureka:
+  client:
+    register-with-eureka: false #자기 자신을 등록 X
+    fetch-registry: false #자기 자신에서 목록 X
+  server:
+    wait-time-in-ms-when-sync-empty: 0
