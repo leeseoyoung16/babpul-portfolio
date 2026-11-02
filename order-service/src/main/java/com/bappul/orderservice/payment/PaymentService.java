@@ -12,6 +12,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
@@ -60,13 +61,22 @@ public class PaymentService {
         params.put("fail_url", props.getFailUrl() + "?partner_order_id=" + orderId);
 
         HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(params, getHeaders());
-        KakaoReadyResponse response = restTemplate.postForObject(
-                "https://open-api.kakaopay.com/online/v1/payment/ready",
-                requestEntity, KakaoReadyResponse.class);
-
-        if (response != null) {
-            log.info("[READY] 결제 요청 완료 - orderId={}, tid={}", orderId, response.getTid());
+        KakaoReadyResponse response;
+        try {
+            response = restTemplate.postForObject(
+                    "https://open-api.kakaopay.com/online/v1/payment/ready",
+                    requestEntity, KakaoReadyResponse.class);
+        } catch (RestClientException e) {
+            log.error("[READY] 카카오페이 결제 준비 요청 실패 - orderId={}, error={}", orderId, e.getMessage());
+            throw new IllegalStateException("결제 준비 요청에 실패했습니다.");
         }
+
+        if (response == null || response.getTid() == null) {
+            log.error("[READY] 카카오페이 응답이 올바르지 않습니다 - orderId={}", orderId);
+            throw new IllegalStateException("결제 준비 응답이 올바르지 않습니다.");
+        }
+
+        log.info("[READY] 결제 요청 완료 - orderId={}, tid={}", orderId, response.getTid());
 
         Payment payment = Payment.builder()
                 .order(order)
@@ -88,6 +98,11 @@ public class PaymentService {
         Payment payment = paymentRepository.findTopByOrderOrderByCreatedAtDesc(order)
                 .orElseThrow(() -> new IllegalStateException("결제 요청 기록이 없습니다."));
 
+        if (payment.getStatus() != PaymentStatus.PENDING ||
+                order.getStatus() != OrderStatus.PENDING) {
+            throw new IllegalStateException("이미 승인된 결제입니다.");
+        }
+
         Map<String, Object> params = new HashMap<>();
         params.put("cid", props.getCid());
         params.put("tid", payment.getTid());
@@ -96,9 +111,20 @@ public class PaymentService {
         params.put("pg_token", pgToken);
 
         HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(params, getHeaders());
-        KakaoApproveResponse response = restTemplate.postForObject(
-                "https://open-api.kakaopay.com/online/v1/payment/approve",
-                requestEntity, KakaoApproveResponse.class);
+        KakaoApproveResponse response;
+        try {
+            response = restTemplate.postForObject(
+                    "https://open-api.kakaopay.com/online/v1/payment/approve",
+                    requestEntity, KakaoApproveResponse.class);
+        } catch (RestClientException e) {
+            log.error("[APPROVE] 카카오페이 결제 승인 요청 실패 - orderId={}, error={}", orderId, e.getMessage());
+            throw new IllegalStateException("결제 승인 요청에 실패했습니다.");
+        }
+
+        if (response == null || response.getTid() == null) {
+            log.error("[APPROVE] 카카오페이 승인 응답이 올바르지 않습니다 - orderId={}", orderId);
+            throw new IllegalStateException("결제 승인 응답이 올바르지 않습니다.");
+        }
 
         payment.setStatus(PaymentStatus.PAID);
         payment.setApprovedAt(LocalDateTime.now());
@@ -120,7 +146,7 @@ public class PaymentService {
         Payment payment = paymentRepository.findTopByOrderOrderByCreatedAtDesc(order)
                 .orElseThrow(() -> new IllegalStateException("결제 내역이 없습니다."));
 
-        if (!isFail && payment.getStatus() == PaymentStatus.PAID) {
+        if (!isFail && payment.getStatus() == PaymentStatus.PAID) { // 환불
             Map<String, Object> params = new HashMap<>();
             params.put("cid", props.getCid());
             params.put("tid", payment.getTid());
@@ -128,9 +154,14 @@ public class PaymentService {
             params.put("cancel_tax_free_amount", 0);
 
             HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(params, getHeaders());
-            restTemplate.postForObject(
-                    "https://open-api.kakaopay.com/online/v1/payment/cancel",
-                    requestEntity, Map.class);
+            try {
+                restTemplate.postForObject(
+                        "https://open-api.kakaopay.com/online/v1/payment/cancel",
+                        requestEntity, Map.class);
+            } catch (RestClientException e) {
+                log.error("[CANCEL] 카카오페이 결제 취소 요청 실패 - orderId={}, error={}", orderId, e.getMessage());
+                throw new IllegalStateException("결제 취소 요청에 실패했습니다.");
+            }
         }
 
         if (isFail) {
