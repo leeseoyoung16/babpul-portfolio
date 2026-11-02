@@ -75,8 +75,11 @@ services:
       NAVER_CLIENT_ID: ${NAVER_CLIENT_ID}
       NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET}
       NAVER_REDIRECT_URI: ${NAVER_REDIRECT_URI}
+      FIREBASE_CREDENTIALS_PATH: ${FIREBASE_CREDENTIALS_PATH}
       JAVA_TOOL_OPTIONS: "-Xmx256m -Xms128m"
       TZ: Asia/Seoul
+    volumes:
+      - ./secrets/firebase:/run/secrets/firebase:ro
 
   order-service:
     build: ./order-service

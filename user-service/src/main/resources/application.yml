@@ -62,3 +62,6 @@ jwt:
   secret-key: ${JWT_SECRET_KEY}
   expiration: 86400000  # 24시간 (원본과 동일)
 
+# Firebase (설정 안 하면 FCM 기능만 비활성화됨)
+firebase:
+  credentials-path: ${FIREBASE_CREDENTIALS_PATH:}

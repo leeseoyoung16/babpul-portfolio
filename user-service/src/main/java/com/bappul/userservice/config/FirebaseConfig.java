@@ -4,28 +4,38 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ClassPathResource;
 
+import java.io.FileInputStream;
 import java.io.InputStream;
 
+@Slf4j
 @Configuration
 public class FirebaseConfig {
 
+    @Value("${firebase.credentials-path:}")
+    private String credentialsPath;
+
     @PostConstruct
     public void init() {
-        try {
-            InputStream serviceAccount = new ClassPathResource("firebaseKey.json").getInputStream();
+        if (credentialsPath == null || credentialsPath.isBlank()) {
+            log.warn("FIREBASE_CREDENTIALS_PATH가 설정되지 않아 FCM 기능이 비활성화됩니다.");
+            return;
+        }
+
+        try (InputStream serviceAccount = new FileInputStream(credentialsPath)) {
             FirebaseOptions options = FirebaseOptions.builder()
                     .setCredentials(GoogleCredentials.fromStream(serviceAccount))
                     .build();
+
             if (FirebaseApp.getApps().isEmpty()) {
                 FirebaseApp.initializeApp(options);
-                System.out.println("Firebase 서버 연결 성공!");
+                log.info("Firebase 초기화 완료 (credentialsPath={})", credentialsPath);
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("Firebase 연결 실패: " + e.getMessage());
+            log.warn("Firebase 초기화 실패로 FCM 기능이 비활성화됩니다: {}", e.getMessage());
         }
     }
 }
