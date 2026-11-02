@@ -1,5 +1,8 @@
 package com.bappul.userservice.config;
 
+import com.bappul.userservice.auth.CustomOAuth2UserService;
+import com.bappul.userservice.auth.JwtAuthenticationFilter;
+import com.bappul.userservice.auth.OAuth2SuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

@@ -1,4 +1,4 @@
-package com.bappul.userservice.config;
+package com.bappul.userservice.auth;
 
 import com.bappul.userservice.user.User;
 import lombok.Getter;

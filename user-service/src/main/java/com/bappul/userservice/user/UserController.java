@@ -1,6 +1,6 @@
 package com.bappul.userservice.user;
 
-import com.bappul.userservice.config.JwtProvider;
+import com.bappul.userservice.auth.JwtProvider;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

@@ -1,4 +1,4 @@
-package com.bappul.userservice.config;
+package com.bappul.userservice.auth;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
