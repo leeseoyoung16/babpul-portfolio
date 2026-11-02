@@ -1,13 +1,17 @@
 package com.bappul.matching.lunchmatch.timetable;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/ocr")
@@ -20,7 +24,8 @@ public class TimetableOcrController {
             @RequestParam("image") MultipartFile image
     ) {
         if (image == null || image.isEmpty()) {
-            throw new RuntimeException("이미지 파일이 필요합니다.");
+            log.warn("시간표 OCR 요청에 이미지 파일이 없음");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지 파일이 필요합니다.");
         }
         return ResponseEntity.ok(timetableOcrService.processImage(image));
     }

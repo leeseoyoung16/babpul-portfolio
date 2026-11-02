@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
 
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -47,10 +46,27 @@ public class TimetableOcrEngine {
 
     public List<TimetableItemDto> parseTimetable(BufferedImage image) throws Exception {
         boolean darkMode = isImageDark(image);
-        BufferedImage ocrImage = darkMode ? invertImage(image) : image;
-
+        BufferedImage ocrImage = darkMode ? invertImage(image) : image; // 다크 모드이면 이미지 전처리
         Tesseract tess = buildTesseract();
 
+        Layout layout = analyzeLayout(image, ocrImage, tess, darkMode); // 요일/시간 좌표 인식
+        List<Rectangle> blocks = detectSubjectBlocks(image, darkMode, layout); // 색상 블록 검출 및 범위 보정
+        List<Map<String, String>> schedules = mapBlocksToSchedules(tess, image, ocrImage, darkMode, layout, blocks); // 과목명 + 요일 + 시간 결정
+        postProcessSchedules(schedules); // 중복/노이즈 제거 + 정렬
+
+        log.info("완료: {}개 항목", schedules.size());
+        return schedules.stream()
+                .map(m -> new TimetableItemDto(
+                        m.get("dayOfWeek"),
+                        m.get("startTime"),
+                        m.get("endTime"),
+                        m.get("subjectName")
+                ))
+                .collect(Collectors.toList());
+    }
+
+    /** 요일 헤더 컬럼과 시간 행 좌표 인식. ([1/3]) */
+    private static Layout analyzeLayout(BufferedImage image, BufferedImage ocrImage, Tesseract tess, boolean darkMode) throws Exception {
         log.info("[1/3] 레이아웃 분석 중... (darkMode={})", darkMode);
         List<Word> allWords = tess.getWords(ocrImage, ITessAPI.TessPageIteratorLevel.RIL_WORD);
 
@@ -77,7 +93,7 @@ public class TimetableOcrEngine {
         }
         log.info("  요일 컬럼: {}", dayColX.keySet());
 
-        int bfsTopBound = dayHeaderMaxY > 0 ? dayHeaderMaxY + 5 : image.getHeight() / 20;
+        int bfsTopBound = dayHeaderMaxY > 0 ? dayHeaderMaxY + 5 : image.getHeight() / 20; // 수업 블록 탐색 위치
         int timeColW = computeTimeColWidth(dayColX, image.getWidth());
 
         int timeStripW = Math.min(timeColW, image.getWidth() / 12);
@@ -91,12 +107,13 @@ public class TimetableOcrEngine {
         for (Word w : leftWords) {
             String t = w.getText().trim();
             Rectangle b = w.getBoundingBox();
+
             if (b.y > minTimeY && TIME_LABELS.contains(t)) {
                 int actual = toActualHour(Integer.parseInt(t));
                 timeRowY.putIfAbsent(actual, b.y);
             }
         }
-        for (Word w : allWords) {
+        for (Word w : allWords) { // 빠진 시간 보충
             String t = w.getText().trim();
             Rectangle b = w.getBoundingBox();
             if (b.x + b.width < timeStripW + 10 && b.y > minTimeY && TIME_LABELS.contains(t)) {
@@ -105,26 +122,38 @@ public class TimetableOcrEngine {
             }
         }
 
-        log.info("[2/3] 과목 블록 검출 중...");
-        int minBlockPixels = Math.max(200, image.getWidth() * image.getHeight() / 8000);
-        int bfsMinBrightness = darkMode ? 30 : 60;
-        int bfsMinSat = darkMode ? 8 : 20;
-        List<Rectangle> blocks = detectColoredBlocks(image, 0, bfsTopBound, minBlockPixels, bfsMinBrightness, bfsMinSat);
+        Layout layout = new Layout();
+        layout.allWords = allWords;
+        layout.dayColX = dayColX;
+        layout.bfsTopBound = bfsTopBound;
+        layout.timeColW = timeColW;
+        layout.timeRowY = timeRowY;
+        return layout;
+    }
 
-        if (!blocks.isEmpty()) {
-            int leftmostX = blocks.stream().mapToInt(b -> b.x).min().orElse(timeColW);
-            if (leftmostX < timeColW - 10) {
-                timeColW = Math.max(20, leftmostX - 5);
+    /** 색칠된 과목 블록 검출 및 검출 결과에 따른 요일/시간 경계 보정. ([2/3]) */
+    private static List<Rectangle> detectSubjectBlocks(BufferedImage image, boolean darkMode, Layout layout) {
+        log.info("[2/3] 과목 블록 검출 중...");
+        int minBlockPixels = Math.max(200, image.getWidth() * image.getHeight() / 8000); // 최소 200 pixel 이상 블록 후보
+        int bfsMinBrightness = darkMode ? 30 : 60; // 밝기
+        int bfsMinSat = darkMode ? 8 : 20; // 채도
+        List<Rectangle> blocks = detectColoredBlocks(image, 0, layout.bfsTopBound, minBlockPixels, bfsMinBrightness, bfsMinSat);
+
+        if (!blocks.isEmpty()) { // 시간 컬럼 재보정
+            int leftmostX = blocks.stream().mapToInt(b -> b.x).min().orElse(layout.timeColW);
+            if (leftmostX < layout.timeColW - 10) {
+                layout.timeColW = Math.max(20, leftmostX - 5);
             }
         }
 
-        if (dayColX.size() >= 2 && !blocks.isEmpty()) {
+        Map<String, Integer> dayColX = layout.dayColX;
+        if (dayColX.size() >= 2 && !blocks.isEmpty()) { // 왼쪽 누락 요일 추론
             List<String> DAY_ORDER = Arrays.asList("월", "화", "수", "목", "금");
             int minDayX2 = dayColX.values().stream().mapToInt(Integer::intValue).min().orElse(0);
             int maxDayX2 = dayColX.values().stream().mapToInt(Integer::intValue).max().orElse(image.getWidth());
             int colWidth2 = (maxDayX2 - minDayX2) / (dayColX.size() - 1);
             int leftThreshold = minDayX2 - colWidth2 / 2;
-            final int capturedTimeColW = timeColW;
+            final int capturedTimeColW = layout.timeColW;
             boolean hasBlocksLeft = blocks.stream()
                     .anyMatch(b -> (b.x + b.width / 2) > capturedTimeColW && (b.x + b.width / 2) < leftThreshold);
             if (hasBlocksLeft) {
@@ -141,10 +170,11 @@ public class TimetableOcrEngine {
                     log.info("  미검출 요일 컬럼 추론 (왼쪽): {} @ x={}", missingDay, (int) inferredX);
                 }
             }
+
             int rightThreshold = maxDayX2 + colWidth2 / 2;
             boolean hasBlocksRight = blocks.stream()
                     .anyMatch(b -> (b.x + b.width / 2) > rightThreshold);
-            if (hasBlocksRight) {
+            if (hasBlocksRight) { // 오른쪽 누락 요일 추론
                 String rightmostDay = dayColX.entrySet().stream()
                         .max(Comparator.comparingInt(Map.Entry::getValue)).get().getKey();
                 int rightIdx = DAY_ORDER.indexOf(rightmostDay);
@@ -160,7 +190,7 @@ public class TimetableOcrEngine {
             }
         }
 
-        final int finalTimeColW = timeColW;
+        int timeColW = layout.timeColW;
         int rightBound = image.getWidth();
         if (dayColX.size() >= 2) {
             int minDayX = dayColX.values().stream().mapToInt(Integer::intValue).min().orElse(0);
@@ -170,6 +200,7 @@ public class TimetableOcrEngine {
         }
 
         int bottomTimeBound = image.getHeight() - image.getHeight() / 25;
+        TreeMap<Integer, Integer> timeRowY = layout.timeRowY;
         if (timeRowY.size() >= 2) {
             List<int[]> trows = new ArrayList<>();
             timeRowY.forEach((h, y) -> trows.add(new int[]{h, y}));
@@ -179,29 +210,37 @@ public class TimetableOcrEngine {
             bottomTimeBound = trows.get(trows.size()-1)[1] + (int)(pph * 1.5);
         }
 
-        blocks.removeIf(b -> b.x + b.width < finalTimeColW + 5);
+        blocks.removeIf(b -> b.x + b.width < timeColW + 5);
         final int finalRightBound = rightBound;
         blocks.removeIf(b -> b.x + b.width / 2 > finalRightBound);
         final int finalBottomBound = bottomTimeBound;
         blocks.removeIf(b -> b.y + b.height / 2 > finalBottomBound);
         log.info("  {}개 블록 발견", blocks.size());
 
+        layout.rightBound = rightBound;
+        layout.bottomTimeBound = bottomTimeBound;
+        return blocks;
+    }
+
+    /** 각 블록에 속한 단어를 모아 과목명/요일/시간 확정. ([3/3]) */
+    private static List<Map<String, String>> mapBlocksToSchedules(Tesseract tess, BufferedImage image, BufferedImage ocrImage,
+                                                                    boolean darkMode, Layout layout, List<Rectangle> blocks) {
         log.info("[3/3] 단어-블록 매핑 중...");
         List<Map<String, String>> schedules = new ArrayList<>();
 
         for (Rectangle block : blocks) {
             List<Word> inside = new ArrayList<>();
             Rectangle expanded = new Rectangle(block.x - 8, block.y - 8, block.width + 16, block.height + 16);
-            for (Word w : allWords) {
+            for (Word w : layout.allWords) {
                 Rectangle wb = w.getBoundingBox();
                 int cx = wb.x + wb.width  / 2;
                 int cy = wb.y + wb.height / 2;
-                if (cx < finalTimeColW || cx > finalRightBound) continue;
-                if (cy < bfsTopBound  || cy > finalBottomBound) continue;
+                if (cx < layout.timeColW || cx > layout.rightBound) continue;
+                if (cy < layout.bfsTopBound  || cy > layout.bottomTimeBound) continue;
                 if (expanded.contains(cx, cy)) inside.add(w);
             }
 
-            String subject = buildSubjectName(inside);
+            String subject = buildSubjectName(inside); // 노이즈 제거 및 과목명 도출
 
             int subKor = (int) subject.chars().filter(c -> c >= 0xAC00 && c <= 0xD7A3).count();
             if (subKor == 0) {
@@ -217,13 +256,13 @@ public class TimetableOcrEngine {
             if (subject.matches(".*[\\]\\[|{}].*")) continue;
             if (subject.matches("[a-z]\\s*\\(.*")) continue;
 
-            String day = assignDay(block, dayColX);
+            String day = assignDay(block, layout.dayColX);
             if (day == null) continue;
 
-            String[] times = assignTimes(block, timeRowY);
+            String[] times = assignTimes(block, layout.timeRowY);
             if (times == null) continue;
             if (times[0].equals(times[1])) continue;
-            if (timeToMinutes(times[1]) - timeToMinutes(times[0]) < 45) continue;
+            if (timeToMinutes(times[1]) - timeToMinutes(times[0]) < 30) continue;
 
             Map<String, String> entry = new LinkedHashMap<>();
             entry.put("dayOfWeek",   day);
@@ -232,13 +271,17 @@ public class TimetableOcrEngine {
             entry.put("subjectName", subject.replaceAll("\\s+", ""));
             schedules.add(entry);
         }
+        return schedules;
+    }
 
+    /** 과목명 정규화, 중복/노이즈 제거, 정렬. */
+    private static void postProcessSchedules(List<Map<String, String>> schedules) {
         List<String> distinctSubjects = schedules.stream()
                 .map(m -> m.get("subjectName"))
                 .distinct()
                 .sorted(Comparator.comparingInt(String::length).reversed())
                 .collect(Collectors.toList());
-        Map<String, String> normalize = new java.util.HashMap<>();
+        Map<String, String> normalize = new HashMap<>();
         for (int i = 0; i < distinctSubjects.size(); i++) {
             for (int j = i + 1; j < distinctSubjects.size(); j++) {
                 String longer  = distinctSubjects.get(i);
@@ -259,24 +302,22 @@ public class TimetableOcrEngine {
         schedules.removeIf(m -> !seen.add(
                 m.get("dayOfWeek") + "|" + m.get("startTime") + "|" + m.get("subjectName")));
 
-        {
-            Map<String, Set<String>> subjectTimes = new java.util.HashMap<>();
-            for (Map<String, String> m : schedules) {
-                String subj = m.get("subjectName");
-                int korChars = (int) subj.chars().filter(c -> c >= 0xAC00 && c <= 0xD7A3).count();
-                if (korChars >= 1 && korChars <= 2) {
-                    subjectTimes.computeIfAbsent(subj, k -> new java.util.HashSet<>())
-                                .add(m.get("startTime"));
-                }
+        Map<String, Set<String>> subjectTimes = new HashMap<>();
+        for (Map<String, String> m : schedules) {
+            String subj = m.get("subjectName");
+            int korChars = (int) subj.chars().filter(c -> c >= 0xAC00 && c <= 0xD7A3).count();
+            if (korChars >= 1 && korChars <= 2) {
+                subjectTimes.computeIfAbsent(subj, k -> new HashSet<>())
+                            .add(m.get("startTime"));
             }
-            Set<String> noiseSubjects = new java.util.HashSet<>();
-            for (Map.Entry<String, Set<String>> e : subjectTimes.entrySet()) {
-                if (e.getValue().size() >= 2) noiseSubjects.add(e.getKey());
-            }
-            if (!noiseSubjects.isEmpty()) {
-                log.info("  OCR 노이즈 과목명 제거: {}", noiseSubjects);
-                schedules.removeIf(m -> noiseSubjects.contains(m.get("subjectName")));
-            }
+        }
+        Set<String> noiseSubjects = new HashSet<>();
+        for (Map.Entry<String, Set<String>> e : subjectTimes.entrySet()) {
+            if (e.getValue().size() >= 2) noiseSubjects.add(e.getKey());
+        }
+        if (!noiseSubjects.isEmpty()) {
+            log.info("  OCR 노이즈 과목명 제거: {}", noiseSubjects);
+            schedules.removeIf(m -> noiseSubjects.contains(m.get("subjectName")));
         }
 
         Map<String, Integer> dayOrder = Map.of(
@@ -286,36 +327,25 @@ public class TimetableOcrEngine {
                         dayOrder.getOrDefault(m.get("dayOfWeek"), 9))
                 .thenComparing(m -> m.get("startTime"))
         );
+    }
 
-        log.info("완료: {}개 항목", schedules.size());
-
-        return schedules.stream()
-                .map(m -> new TimetableItemDto(
-                        m.get("dayOfWeek"),
-                        m.get("startTime"),
-                        m.get("endTime"),
-                        m.get("subjectName")
-                ))
-                .collect(Collectors.toList());
+    /** parseTimetable 단계 간 전달되는 레이아웃 인식 결과. */
+    private static class Layout {
+        List<Word> allWords;
+        Map<String, Integer> dayColX;
+        int bfsTopBound;
+        int timeColW;
+        TreeMap<Integer, Integer> timeRowY;
+        int rightBound;
+        int bottomTimeBound;
     }
 
     private static Tesseract buildTesseract() {
         System.setErr(new java.io.PrintStream(java.io.OutputStream.nullOutputStream()));
         Tesseract tess = new Tesseract();
         String tessData = System.getenv("TESSDATA_PREFIX");
-        if (tessData == null) {
-            for (String p : new String[]{
-                    "C:/Program Files/Tesseract-OCR/tessdata",
-                    "C:/Program Files (x86)/Tesseract-OCR/tessdata",
-                    "/opt/homebrew/share/tessdata",
-                    "/usr/share/tessdata",
-                    "/usr/local/share/tessdata",
-                    "/usr/share/tesseract-ocr/4.00/tessdata",
-                    "/usr/share/tesseract-ocr/5/tessdata",
-                    "tessdata"}) {
-                if (new File(p, "kor.traineddata").exists()) { tessData = p; break; }
-            }
-            if (tessData == null) tessData = "tessdata";
+        if (tessData == null || tessData.isBlank()) {
+            throw new IllegalStateException("TESSDATA_PREFIX 환경변수가 설정되지 않았습니다.");
         }
         tess.setDatapath(tessData);
         tess.setLanguage("kor+eng");
@@ -350,7 +380,7 @@ public class TimetableOcrEngine {
         return result;
     }
 
-    private static int computeTimeColWidth(Map<String, Integer> dayColX, int imageWidth) {
+    private static int computeTimeColWidth(Map<String, Integer> dayColX, int imageWidth) { // 시간 표시 영역 탐색
         if (dayColX.size() >= 2) {
             int minX = dayColX.values().stream().mapToInt(Integer::intValue).min().orElse(imageWidth/5);
             int maxX = dayColX.values().stream().mapToInt(Integer::intValue).max().orElse(imageWidth*4/5);
@@ -613,7 +643,7 @@ public class TimetableOcrEngine {
         if (!cur.isEmpty()) lines.add(cur);
 
         StringBuilder sb = new StringBuilder();
-        for (List<Word> line : lines) {
+        for (List<Word> line : lines) { // 노이즈 제거
             line.sort(Comparator.comparingInt(w -> w.getBoundingBox().x));
             for (int wi = 0; wi < line.size(); wi++) {
                 String t = line.get(wi).getText().trim();
