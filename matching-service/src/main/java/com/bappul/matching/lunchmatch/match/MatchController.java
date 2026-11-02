@@ -34,7 +34,7 @@ public class MatchController {
             @AuthenticationPrincipal AuthenticatedUser authUser
     ) {
         UserInfoDto userInfo = userServiceClient.getUserById(authUser.getUserId());
-        return matchService.enqueue(authUser.getUserId(), userInfo.getPoints(), requestedSlots);
+        return matchService.enqueue(authUser.getUserId(), userInfo, requestedSlots);
     }
 
     @GetMapping("/status")

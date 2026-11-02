@@ -14,4 +14,7 @@ public class UserInfoDto {
     private String fcmToken;
     private int points;
     private String role;
+
+    /** user-service 조회 성공 여부. fallback이 사용될 때만 false로 설정된다. */
+    private boolean available = true;
 }

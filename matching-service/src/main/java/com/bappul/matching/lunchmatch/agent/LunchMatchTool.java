@@ -37,7 +37,7 @@ public class LunchMatchTool {
 
     public String enqueue(Long userId, List<MatchQueue.FreeTimeSlot> slots) throws Exception {
         UserInfoDto userInfo = userServiceClient.getUserById(userId);
-        MatchEnqueueResult result = matchService.enqueue(userId, userInfo.getPoints(), slots);
+        MatchEnqueueResult result = matchService.enqueue(userId, userInfo, slots);
         return objectMapper.writeValueAsString(result);
     }
 

@@ -59,11 +59,14 @@ public class MatchService {
     }
 
     @Transactional
-    public MatchEnqueueResult enqueue(Long userId, int userPoints, List<MatchQueue.FreeTimeSlot> requestedSlots) {
+    public MatchEnqueueResult enqueue(Long userId, UserInfoDto userInfo, List<MatchQueue.FreeTimeSlot> requestedSlots) {
         DayOfWeek today = LocalDate.now().getDayOfWeek();
         String userIdStr = String.valueOf(userId);
 
-        if (userPoints < 100) {
+        if (!userInfo.isAvailable()) {
+            throw new IllegalStateException("사용자 정보를 확인할 수 없습니다. 잠시 후 다시 시도해주세요.");
+        }
+        if (userInfo.getPoints() < 100) {
             throw new IllegalStateException("포인트가 부족합니다. 매칭에는 100포인트 이상이 필요합니다.");
         }
 

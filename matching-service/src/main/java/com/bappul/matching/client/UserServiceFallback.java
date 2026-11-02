@@ -15,6 +15,7 @@ public class UserServiceFallback implements UserServiceClient {
         UserInfoDto dto = new UserInfoDto();
         dto.setId(userId);
         dto.setPoints(0);
+        dto.setAvailable(false);
         return dto;
     }
 
@@ -25,6 +26,7 @@ public class UserServiceFallback implements UserServiceClient {
 
     @Override
     public void updatePoints(Long userId, int delta) {
-        log.warn("UserService fallback: updatePoints skipped userId={}", userId);
+        log.warn("UserService fallback: updatePoints failed userId={}", userId);
+        throw new IllegalStateException("포인트 잔액 갱신에 실패했습니다. 잠시 후 다시 시도해주세요.");
     }
 }
