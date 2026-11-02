@@ -35,9 +35,7 @@ public class StoreOpenScheduler {
                         storeRepository.save(store);
                         log.info("{} 날짜 변경 → 수동 종료 플래그 초기화", store.getName());
                     }
-                }
-
-                if (store.isManualOpen()) {
+                } else if (store.isManualOpen()) {
                     if (today.equals(store.getManualOpenDate())) {
                         continue;
                     } else {
