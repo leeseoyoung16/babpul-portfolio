@@ -106,12 +106,9 @@ public class AgentService {
                 yield objectMapper.writeValueAsString(menu) + "\n[NOTICE: 메뉴 사진은 앱에서 별도로 첨부할 수 있습니다.]";
             }
             case "updateMenu" -> {
-                Map<String, Object> body = Map.of(
-                    "name", args.get("name").asText(),
-                    "price", args.get("price").asInt(),
-                    "prepTime", args.get("prepTime").asInt()
-                );
-                yield objectMapper.writeValueAsString(menuClient.updateMenu(args.get("menuId").asLong(), body, ownerId));
+                Long menuId = args.get("menuId").asLong();
+                Map<String, Object> body = MenuUpdateMerger.merge(args, menuClient.getMenu(menuId));
+                yield objectMapper.writeValueAsString(menuClient.updateMenu(menuId, body, ownerId));
             }
             case "disableMenu" -> {
                 menuClient.disableMenu(args.get("menuId").asLong(), ownerId);
@@ -137,12 +134,7 @@ public class AgentService {
                 yield objectMapper.writeValueAsString(storeServiceClient.createNotice(storeId, body, ownerId));
             }
             case "updateNotice" -> {
-                Map<String, String> body = Map.of(
-                    "title", args.get("title").asText(),
-                    "content", args.get("content").asText(),
-                    "scheduledAt", args.get("scheduledAt").asText(),
-                    "expireAt", args.get("expireAt").asText()
-                );
+                Map<String, String> body = NoticeUpdateMerger.merge(args, storeServiceClient.getNotices(storeId));
                 yield objectMapper.writeValueAsString(
                         storeServiceClient.updateNotice(args.get("noticeId").asLong(), body, ownerId));
             }
@@ -194,14 +186,14 @@ public class AgentService {
                            "price",    prop("integer", "메뉴 가격 (원)"),
                            "prepTime", prop("integer", "준비 시간 (분)")),
                        "required", List.of("name", "price", "prepTime"))),
-            toolDef("updateMenu", "기존 메뉴를 수정합니다.",
+            toolDef("updateMenu", "기존 메뉴를 수정합니다. 바꿀 필드만 보내면 나머지는 기존 값을 유지합니다.",
                 Map.of("type", "object",
                        "properties", Map.of(
                            "menuId",   prop("integer", "수정할 메뉴 ID"),
                            "name",     prop("string",  "새 메뉴 이름"),
                            "price",    prop("integer", "새 가격 (원)"),
                            "prepTime", prop("integer", "새 준비 시간 (분)")),
-                       "required", List.of("menuId", "name", "price", "prepTime"))),
+                       "required", List.of("menuId"))),
             toolDef("disableMenu", "메뉴를 비활성화합니다.",
                 Map.of("type", "object",
                        "properties", Map.of("menuId", prop("integer", "비활성화할 메뉴 ID")),
@@ -226,15 +218,15 @@ public class AgentService {
                            "scheduledAt", prop("string", "시작 시각 (yyyy-MM-ddTHH:mm:ss)"),
                            "expireAt",    prop("string", "종료 시각 (yyyy-MM-ddTHH:mm:ss)")),
                        "required", List.of("title", "content", "scheduledAt", "expireAt"))),
-            toolDef("updateNotice", "공지를 수정합니다.",
+            toolDef("updateNotice", "공지를 수정합니다. 바꿀 필드만 보내면 나머지는 기존 값을 유지합니다.",
                 Map.of("type", "object",
                        "properties", Map.of(
                            "noticeId", prop("integer", "수정할 공지 ID"),
                            "title", prop("string", "새 공지 제목"),
                            "content", prop("string", "새 공지 내용"),
-                           "scheduledAt", prop("string", "새 시작 시각"),
-                           "expireAt",    prop("string", "새 종료 시각")),
-                       "required", List.of("noticeId", "title", "content", "scheduledAt", "expireAt"))),
+                           "scheduledAt", prop("string", "새 시작 시각 (yyyy-MM-ddTHH:mm:ss)"),
+                           "expireAt",    prop("string", "새 종료 시각 (yyyy-MM-ddTHH:mm:ss)")),
+                       "required", List.of("noticeId"))),
             toolDef("deleteNotice", "공지를 삭제합니다.",
                 Map.of("type", "object",
                        "properties", Map.of("noticeId", prop("integer", "삭제할 공지 ID")),
