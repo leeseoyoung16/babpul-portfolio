@@ -105,8 +105,8 @@ public class InternalStoreController {
         StoreSchedule updated = new StoreSchedule();
         updated.setDayOfWeek(DayOfWeek.valueOf(dayOfWeek.toUpperCase()));
         updated.setClosed(closed);
-        updated.setOpenTime(closed ? LocalTime.of(0, 0) : LocalTime.parse(openTimeStr));
-        updated.setCloseTime(closed ? LocalTime.of(0, 0) : LocalTime.parse(closeTimeStr));
+        updated.setOpenTime(LocalTime.parse(openTimeStr));
+        updated.setCloseTime(LocalTime.parse(closeTimeStr));
 
         List<StoreSchedule> existing = scheduleService.getSchedulesByStore(storeId);
         List<StoreSchedule> result = new ArrayList<>(existing.stream()

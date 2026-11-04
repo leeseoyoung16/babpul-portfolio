@@ -152,12 +152,8 @@ public class AgentService {
             }
             case "getSchedules" -> objectMapper.writeValueAsString(storeServiceClient.getSchedules(storeId));
             case "updateSchedule" -> {
-                Map<String, Object> body = new HashMap<>();
-                body.put("dayOfWeek", args.get("dayOfWeek").asText());
-                body.put("openTime", args.has("openTime") ? args.get("openTime").asText() : "00:00");
-                body.put("closeTime", args.has("closeTime") ? args.get("closeTime").asText() : "00:00");
-                body.put("closed", args.has("closed") && args.get("closed").asBoolean());
-                String dayOfWeek = args.get("dayOfWeek").asText();
+                Map<String, Object> body = ScheduleUpdateMerger.merge(args, storeServiceClient.getSchedules(storeId));
+                String dayOfWeek = (String) body.get("dayOfWeek");
                 yield objectMapper.writeValueAsString(
                         storeServiceClient.updateSchedule(storeId, dayOfWeek, body, ownerId));
             }
@@ -243,13 +239,13 @@ public class AgentService {
                        "required", List.of("noticeId"))),
             toolDef("getSchedules", "가게의 영업 일정 전체를 조회합니다.",
                 Map.of("type", "object", "properties", Map.of(), "required", List.of())),
-            toolDef("updateSchedule", "특정 요일의 영업 일정을 등록/수정합니다.",
+            toolDef("updateSchedule", "특정 요일의 영업 일정을 등록/수정합니다. 보내지 않은 필드는 기존 값을 유지합니다.",
                 Map.of("type", "object",
                        "properties", Map.of(
                            "dayOfWeek", prop("string", "요일 (MONDAY~SUNDAY)"),
                            "openTime",  prop("string", "오픈 시각 (HH:mm)"),
                            "closeTime", prop("string", "마감 시각 (HH:mm)"),
-                           "closed",    Map.of("type", "boolean", "description", "휴무 여부")),
+                           "closed",    Map.of("type", "boolean", "description", "휴무 여부. 휴무일을 영업일로 바꿀 때는 false를 명시합니다.")),
                        "required", List.of("dayOfWeek"))),
             toolDef("isStoreOpen", "현재 가게가 영업 중인지 확인합니다.",
                 Map.of("type", "object", "properties", Map.of(), "required", List.of()))
