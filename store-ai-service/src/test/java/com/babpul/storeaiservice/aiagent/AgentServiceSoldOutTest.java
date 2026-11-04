@@ -30,6 +30,9 @@ class AgentServiceSoldOutTest {
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void passesRequestedSoldOutValue(boolean soldOut) throws Exception {
+        MenuDto menu = new MenuDto();
+        menu.setStoreId(1L);
+        when(menuClient.getMenu(3L)).thenReturn(menu);
         when(menuClient.setSoldOut(3L, soldOut, 7L)).thenReturn(new MenuDto());
         when(geminiClient.send(any())).thenReturn(toolCall(soldOut), DONE);
 

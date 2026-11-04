@@ -173,6 +173,7 @@ class PartialUpdateMergerTest {
     private MenuDto menu() {
         MenuDto menu = new MenuDto();
         menu.setId(3L);
+        menu.setStoreId(1L);
         menu.setName("아메리카노");
         menu.setPrice(4000);
         menu.setPrepTime(5);

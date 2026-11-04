@@ -95,7 +95,7 @@ public class AgentService {
     private String executeTool(String funcName, JsonNode args, Long storeId, Long ownerId) throws Exception {
         return switch (funcName) {
             case "getMenus" -> objectMapper.writeValueAsString(menuClient.getMenusByStore(storeId));
-            case "getMenu"  -> objectMapper.writeValueAsString(menuClient.getMenu(args.get("menuId").asLong()));
+            case "getMenu"  -> objectMapper.writeValueAsString(requireMenuInStore(args.get("menuId").asLong(), storeId));
             case "createMenu" -> {
                 Map<String, Object> body = Map.of(
                     "name", args.get("name").asText(),
@@ -107,15 +107,21 @@ public class AgentService {
             }
             case "updateMenu" -> {
                 Long menuId = args.get("menuId").asLong();
-                Map<String, Object> body = MenuUpdateMerger.merge(args, menuClient.getMenu(menuId));
+                Map<String, Object> body = MenuUpdateMerger.merge(args, requireMenuInStore(menuId, storeId));
                 yield objectMapper.writeValueAsString(menuClient.updateMenu(menuId, body, ownerId));
             }
             case "disableMenu" -> {
-                menuClient.disableMenu(args.get("menuId").asLong(), ownerId);
+                Long menuId = args.get("menuId").asLong();
+                requireMenuInStore(menuId, storeId);
+                menuClient.disableMenu(menuId, ownerId);
                 yield "{\"result\": \"메뉴가 비활성화되었습니다.\"}";
             }
-            case "setSoldOut" -> objectMapper.writeValueAsString(
-                    menuClient.setSoldOut(args.get("menuId").asLong(), args.get("soldOut").asBoolean(), ownerId));
+            case "setSoldOut" -> {
+                Long menuId = args.get("menuId").asLong();
+                requireMenuInStore(menuId, storeId);
+                yield objectMapper.writeValueAsString(
+                        menuClient.setSoldOut(menuId, args.get("soldOut").asBoolean(), ownerId));
+            }
             case "getNotices" -> objectMapper.writeValueAsString(storeServiceClient.getNotices(storeId));
             case "getNotice"  -> {
                 Long noticeId = args.get("noticeId").asLong();
@@ -139,7 +145,13 @@ public class AgentService {
                         storeServiceClient.updateNotice(args.get("noticeId").asLong(), body, ownerId));
             }
             case "deleteNotice" -> {
-                storeServiceClient.deleteNotice(args.get("noticeId").asLong(), ownerId);
+                Long noticeId = args.get("noticeId").asLong();
+                boolean inStore = storeServiceClient.getNotices(storeId).stream()
+                        .anyMatch(n -> noticeId.equals(n.getId()));
+                if (!inStore) {
+                    throw new IllegalArgumentException("이 가게에서 해당 공지를 찾을 수 없습니다.");
+                }
+                storeServiceClient.deleteNotice(noticeId, ownerId);
                 yield "{\"result\": \"공지가 삭제되었습니다.\"}";
             }
             case "getSchedules" -> objectMapper.writeValueAsString(storeServiceClient.getSchedules(storeId));
@@ -155,6 +167,15 @@ public class AgentService {
             }
             default -> "{\"error\": \"알 수 없는 함수: " + funcName + "\"}";
         };
+    }
+
+    /** AI는 현재 가게의 메뉴만 다룰 수 있다. 소유자 권한은 store-service가 ownerId로 별도 검증한다. */
+    private MenuDto requireMenuInStore(Long menuId, Long storeId) {
+        MenuDto menu = menuClient.getMenu(menuId);
+        if (menu == null || !storeId.equals(menu.getStoreId())) {
+            throw new IllegalArgumentException("이 가게에서 해당 메뉴를 찾을 수 없습니다.");
+        }
+        return menu;
     }
 
     private Map<String, Object> systemInstruction(Long storeId) {
