@@ -182,13 +182,14 @@ public class MatchService {
         MatchProposal proposal = matchProposalRepository.findById(proposalId).orElse(null);
 
         if (proposal == null) return MatchProposalResult.timeout();
-        if (proposal.getStatus() != MatchProposalStatus.PENDING) {
-            return MatchProposalResult.alreadyProcessed(proposal.getStatus());
-        }
 
         boolean isRequester = userId.equals(proposal.getRequesterId());
         boolean isReceiver  = userId.equals(proposal.getReceiverId());
         if (!isRequester && !isReceiver) return MatchProposalResult.notParticipant();
+
+        if (proposal.getStatus() != MatchProposalStatus.PENDING) {
+            return MatchProposalResult.alreadyProcessed(proposal.getStatus());
+        }
 
         if (!accept) {
             proposal.setStatus(MatchProposalStatus.REJECTED);
@@ -240,8 +241,11 @@ public class MatchService {
         return MatchProposalResult.waitingOther();
     }
 
-    public MatchProposal getProposal(String proposalId) {
-        return matchProposalRepository.findById(proposalId).orElse(null);
+    /** 참여자에게만 제안을 돌려준다. 그 외에는 만료된 제안과 구분되지 않도록 null을 반환한다. */
+    public MatchProposal getProposal(Long userId, String proposalId) {
+        return matchProposalRepository.findById(proposalId)
+                .filter(p -> userId.equals(p.getRequesterId()) || userId.equals(p.getReceiverId()))
+                .orElse(null);
     }
 
     @Scheduled(fixedDelay = 30000)

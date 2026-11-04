@@ -105,7 +105,7 @@ public class LunchAgentService {
                 yield lunchMatchTool.enqueue(userId, slots);
             }
             case "getQueueStatus" -> lunchMatchTool.getQueueStatus(userId);
-            case "getProposal"    -> lunchMatchTool.getProposal(args.get("proposalId").asText());
+            case "getProposal"    -> lunchMatchTool.getProposal(userId, args.get("proposalId").asText());
             case "respond"        -> lunchMatchTool.respond(userId,
                                         args.get("proposalId").asText(),
                                         args.get("accept").asBoolean());

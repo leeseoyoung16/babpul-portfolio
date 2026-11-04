@@ -47,8 +47,8 @@ public class LunchMatchTool {
         return objectMapper.writeValueAsString(queue);
     }
 
-    public String getProposal(String proposalId) throws Exception {
-        MatchProposal proposal = matchService.getProposal(proposalId);
+    public String getProposal(Long userId, String proposalId) throws Exception {
+        MatchProposal proposal = matchService.getProposal(userId, proposalId);
         if (proposal == null) return "{\"message\": \"매칭 제안이 만료되었거나 존재하지 않습니다.\"}";
         return objectMapper.writeValueAsString(new AnonymousProposalDto(proposal));
     }

@@ -43,8 +43,11 @@ public class MatchController {
     }
 
     @GetMapping("/proposal/{proposalId}")
-    public MatchProposal getProposal(@PathVariable String proposalId) {
-        return matchService.getProposal(proposalId);
+    public MatchProposal getProposal(
+            @PathVariable String proposalId,
+            @AuthenticationPrincipal AuthenticatedUser authUser
+    ) {
+        return matchService.getProposal(authUser.getUserId(), proposalId);
     }
 
     @PostMapping("/proposal/{proposalId}/respond")
