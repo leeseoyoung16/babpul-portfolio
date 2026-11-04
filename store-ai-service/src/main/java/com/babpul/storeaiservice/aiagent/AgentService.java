@@ -117,8 +117,8 @@ public class AgentService {
                 menuClient.disableMenu(args.get("menuId").asLong(), ownerId);
                 yield "{\"result\": \"메뉴가 비활성화되었습니다.\"}";
             }
-            case "toggleSoldOut" -> objectMapper.writeValueAsString(
-                    menuClient.toggleSoldOut(args.get("menuId").asLong(), ownerId));
+            case "setSoldOut" -> objectMapper.writeValueAsString(
+                    menuClient.setSoldOut(args.get("menuId").asLong(), args.get("soldOut").asBoolean(), ownerId));
             case "getNotices" -> objectMapper.writeValueAsString(storeServiceClient.getNotices(storeId));
             case "getNotice"  -> {
                 Long noticeId = args.get("noticeId").asLong();
@@ -206,10 +206,12 @@ public class AgentService {
                 Map.of("type", "object",
                        "properties", Map.of("menuId", prop("integer", "비활성화할 메뉴 ID")),
                        "required", List.of("menuId"))),
-            toolDef("toggleSoldOut", "메뉴의 품절 상태를 토글합니다.",
+            toolDef("setSoldOut", "메뉴의 품절 상태를 지정한 값으로 설정합니다.",
                 Map.of("type", "object",
-                       "properties", Map.of("menuId", prop("integer", "품절 토글할 메뉴 ID")),
-                       "required", List.of("menuId"))),
+                       "properties", Map.of(
+                           "menuId",  prop("integer", "메뉴 ID"),
+                           "soldOut", prop("boolean", "품절 처리는 true, 판매 재개는 false")),
+                       "required", List.of("menuId", "soldOut"))),
             toolDef("getNotices", "가게의 공지 목록을 조회합니다.",
                 Map.of("type", "object", "properties", Map.of(), "required", List.of())),
             toolDef("getNotice", "단일 공지를 조회합니다.",

@@ -35,7 +35,7 @@ public class MenuClientFallback implements MenuClient {
     }
 
     @Override
-    public MenuDto toggleSoldOut(Long menuId, Long ownerId) {
+    public MenuDto setSoldOut(Long menuId, boolean soldOut, Long ownerId) {
         throw new RuntimeException("store-service 연결 불가 - 품절 상태를 변경할 수 없습니다.");
     }
 }

@@ -68,7 +68,11 @@ public class InternalMenuController {
     }
 
     @PatchMapping("/{menuId}/soldout")
-    public ResponseEntity<MenuResponseDto> toggleSoldOut(@PathVariable Long menuId, @RequestParam Long ownerId) {
-        return ResponseEntity.ok(new MenuResponseDto(menuService.toggleSoldOut(menuId, ownerId)));
+    public ResponseEntity<MenuResponseDto> setSoldOut(
+            @PathVariable Long menuId,
+            @RequestParam boolean soldOut,
+            @RequestParam Long ownerId
+    ) {
+        return ResponseEntity.ok(new MenuResponseDto(menuService.setSoldOut(menuId, soldOut, ownerId)));
     }
 }

@@ -77,6 +77,17 @@ public class MenuService {
         return saved;
     }
 
+    /** 품절 상태를 지정한 값으로 맞춘다. 같은 요청이 반복돼도 결과가 같다. */
+    @Transactional
+    public Menu setSoldOut(Long menuId, boolean soldOut, Long ownerId) {
+        Menu menu = getMenu(menuId);
+        verifyOwner(menu.getStoreId(), ownerId);
+        menu.setSoldout(soldOut);
+        Menu saved = menuRepository.save(menu);
+        updateRandomPrice(menu.getStoreId());
+        return saved;
+    }
+
     @Transactional
     public Menu updateWeight(Long menuId, int weight, String role) {
         if (!"ADMIN".equals(role)) throw new RuntimeException("관리자만 가중치를 수정할 수 있습니다.");

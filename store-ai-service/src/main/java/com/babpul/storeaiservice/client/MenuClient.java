@@ -30,5 +30,5 @@ public interface MenuClient {
     void disableMenu(@PathVariable Long menuId, @RequestParam Long ownerId);
 
     @PatchMapping("/internal/menus/{menuId}/soldout")
-    MenuDto toggleSoldOut(@PathVariable Long menuId, @RequestParam Long ownerId);
+    MenuDto setSoldOut(@PathVariable Long menuId, @RequestParam boolean soldOut, @RequestParam Long ownerId);
 }
